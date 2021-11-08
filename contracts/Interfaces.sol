@@ -172,3 +172,7 @@ interface IBurner {
     function execute() external returns(bool);
 }
 
+interface IPreDepositChecker {
+    function canDeposit(address, uint, uint) external view returns(bool);
+}
+

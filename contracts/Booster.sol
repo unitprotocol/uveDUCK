@@ -54,7 +54,7 @@ contract Booster {
     PoolInfo[] public poolInfo;
     mapping(address => bool) public gaugeMap;
 
-    mapping (uint256 => uint256) public liquidityLimits;
+    address public preDepositChecker;
 
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
@@ -160,10 +160,9 @@ contract Booster {
         return poolInfo.length;
     }
 
-    function setLiquidityLimit(uint256 _pid, uint256 _limit) external {
+    function setPreDepositChecker(address _checker) external {
         require(msg.sender == poolManager && !isShutdown, "!add");
-        require(!poolInfo[_pid].shutdown, "pool is closed");
-        liquidityLimits[_pid] = _limit;
+        preDepositChecker = _checker;
     }
 
     //create a new pool
@@ -248,8 +247,8 @@ contract Booster {
         address lptoken = pool.lptoken;
         address token = pool.token;
 
-        if (liquidityLimits[_pid] != 0) {
-            require(liquidityLimits[_pid] >= IERC20(token).totalSupply() + _amount, "limit reached");
+        if (preDepositChecker != address(0)) {
+            require(IPreDepositChecker(preDepositChecker).canDeposit(msg.sender, _pid, _amount), "check failed");
         }
 
         //send to proxy to stake
