@@ -5,13 +5,15 @@ import "./Interfaces.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
 
 contract CurveVoterProxy {
+    using SafeMath for uint;
     using SafeERC20 for IERC20;
     using Address for address;
 
-    address public constant crvMinter = address(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
+    address public constant mintr = address(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
     address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
     address public constant escrow = address(0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2);
@@ -78,7 +80,7 @@ contract CurveVoterProxy {
 
     //stash only function for pulling extra incentive reward tokens out
     function withdraw(IERC20 _asset) external returns (uint256 balance) {
-        require(stashPool[msg.sender], "!auth");
+        require(stashPool[msg.sender] == true, "!auth");
 
         //check protection
         if (protectedTokens[address(_asset)] == true) {
@@ -95,8 +97,8 @@ contract CurveVoterProxy {
         require(msg.sender == operator, "!auth");
         uint256 _balance = IERC20(_token).balanceOf(address(this));
         if (_balance < _amount) {
-            _amount = _withdrawSome(_gauge, _amount - _balance);
-            _amount = _amount + _balance;
+            _amount = _withdrawSome(_gauge, _amount.sub(_balance));
+            _amount = _amount.add(_balance);
         }
         IERC20(_token).safeTransfer(msg.sender, _amount);
         return true;
@@ -104,7 +106,7 @@ contract CurveVoterProxy {
 
     function withdrawAll(address _token, address _gauge) external returns(bool) {
         require(msg.sender == operator, "!auth");
-        uint256 amount = balanceOfPool(_gauge) + IERC20(_token).balanceOf(address(this));
+        uint256 amount = balanceOfPool(_gauge).add(IERC20(_token).balanceOf(address(this)));
         withdraw(_token, _gauge, amount);
         return true;
     }
@@ -160,7 +162,7 @@ contract CurveVoterProxy {
         require(msg.sender == operator, "!auth");
 
         uint256 _balance = 0;
-        try IMinter(crvMinter).mint(_gauge) {
+        try IMinter(mintr).mint(_gauge) {
             _balance = IERC20(crv).balanceOf(address(this));
             IERC20(crv).safeTransfer(operator, _balance);
         } catch {}
@@ -193,7 +195,7 @@ contract CurveVoterProxy {
     ) external returns (bool, bytes memory) {
         require(msg.sender == operator, "!auth");
 
-        (bool success, bytes memory result) = _to.call {value:_value}(_data);
+        (bool success, bytes memory result) = _to.call{value:_value}(_data);
 
         return (success, result);
     }

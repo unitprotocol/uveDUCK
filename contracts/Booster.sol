@@ -4,10 +4,12 @@ pragma solidity 0.8.9;
 import "./Interfaces.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/utils/Address.sol';
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 
 contract Booster {
+    using SafeMath for uint;
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -59,6 +61,7 @@ contract Booster {
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
 
+    // We dont need `minter` since we dont have an additional reward token
     constructor(address _staker) {
         isShutdown = false;
         staker = _staker;
@@ -136,7 +139,7 @@ contract Booster {
     function setFees(uint256 _duckStakerFees, uint256 _callerFees, uint256 _platform) external {
         require(msg.sender == feeManager, "!auth");
 
-        uint256 total = _duckStakerFees + _callerFees + _platform;
+        uint256 total = _duckStakerFees.add(_callerFees).add(_platform);
         require(total <= MaxFees, ">MaxFees");
 
         require(_duckStakerFees <= 1990
@@ -242,7 +245,7 @@ contract Booster {
     function deposit(uint256 _pid, uint256 _amount, bool _stake) public returns(bool) {
         require(!isShutdown, "shutdown");
         PoolInfo storage pool = poolInfo[_pid];
-        require(!pool.shutdown, "pool is closed");
+        require(pool.shutdown == false, "pool is closed");
 
         address lptoken = pool.lptoken;
         address token = pool.token;
@@ -400,20 +403,20 @@ contract Booster {
         //crv balance
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
 
-        if (crvBal != 0) {
-            uint256 _stakerIncentive = crvBal * duckStakerIncentive / FEE_DENOMINATOR;
-            uint256 _callIncentive = crvBal * earmarkIncentive / FEE_DENOMINATOR;
+        if (crvBal > 0) {
+            uint256 _stakerIncentive = crvBal.mul(duckStakerIncentive).div(FEE_DENOMINATOR);
+            uint256 _callIncentive = crvBal.mul(earmarkIncentive).div(FEE_DENOMINATOR);
 
             //send treasury
-            if (treasury != address(0) && treasury != address(this) && platformFee != 0) {
+            if (treasury != address(0) && treasury != address(this) && platformFee > 0) {
                 //only subtract after address condition check
-                uint256 _platform = crvBal * platformFee / FEE_DENOMINATOR;
-                crvBal = crvBal - _platform;
+                uint256 _platform = crvBal.mul(platformFee).div(FEE_DENOMINATOR);
+                crvBal = crvBal.sub(_platform);
                 IERC20(crv).safeTransfer(treasury, _platform);
             }
 
             //remove incentives from balance
-            crvBal = crvBal - _callIncentive - _stakerIncentive;
+            crvBal = crvBal.sub(_callIncentive).sub(_stakerIncentive);
 
             //send incentives for calling
             IERC20(crv).safeTransfer(msg.sender, _callIncentive);

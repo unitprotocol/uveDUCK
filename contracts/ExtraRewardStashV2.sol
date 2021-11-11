@@ -5,11 +5,13 @@ import "./Interfaces.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
 
 contract ExtraRewardStashV2 {
     using SafeERC20 for IERC20;
     using Address for address;
+    using SafeMath for uint256;
 
     address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
     uint256 private constant maxRewards = 8;
@@ -185,7 +187,7 @@ contract ExtraRewardStashV2 {
                 if(activeCount > 1){
                     //take difference of before/after(only send new tokens)
                     uint256 amount = IERC20(token).balanceOf(address(this));
-                    amount = amount - before;
+                    amount = amount.sub(before);
 
                     //send to arbitrator
                     address arb = IDeposit(operator).rewardArbitrator();
@@ -209,7 +211,7 @@ contract ExtraRewardStashV2 {
 
             uint256 amount = IERC20(token).balanceOf(address(this));
             if (amount > 0) {
-                historicalRewards[token] = historicalRewards[token] + amount;
+                historicalRewards[token] = historicalRewards[token].add(amount);
                 if(token == crv){
                     //if crv, send back to booster to distribute
                     IERC20(token).safeTransfer(operator, amount);

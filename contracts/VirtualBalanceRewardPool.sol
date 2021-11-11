@@ -39,6 +39,7 @@ pragma solidity 0.8.9;
 */
 
 import "./Interfaces.sol";
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/utils/Address.sol';
@@ -61,6 +62,7 @@ contract VirtualBalanceWrapper {
 
 contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     using SafeERC20 for IERC20;
+    using SafeMath for uint256;
 
     IERC20 public rewardToken;
     uint256 public constant duration = 7 days;
@@ -113,20 +115,21 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
             return rewardPerTokenStored;
         }
         return
-        rewardPerTokenStored + (
-            (lastTimeRewardApplicable() - lastUpdateTime)
-            * rewardRate
-            * 1e18
-            / totalSupply()
-        );
+            rewardPerTokenStored.add(
+                lastTimeRewardApplicable()
+                    .sub(lastUpdateTime)
+                    .mul(rewardRate)
+                    .mul(1e18)
+                    .div(totalSupply())
+            );
     }
 
     function earned(address account) public view returns (uint256) {
         return
-        balanceOf(account)
-        * (rewardPerToken() - userRewardPerTokenPaid[account])
-        / 1e18
-        + rewards[account];
+            balanceOf(account)
+                .mul(rewardPerToken().sub(userRewardPerTokenPaid[account]))
+                .div(1e18)
+                .add(rewards[account]);
     }
 
     //update reward, emit, call linked reward's stake
@@ -162,15 +165,15 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
         getReward(msg.sender);
     }
 
-    function donate(uint256 _amount) external {
+    function donate(uint256 _amount) external returns(bool) {
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
-        queuedRewards = queuedRewards + _amount;
+        queuedRewards = queuedRewards.add(_amount);
     }
 
     function queueNewRewards(uint256 _rewards) external {
         require(msg.sender == operator, "!authorized");
 
-        _rewards = _rewards + queuedRewards;
+        _rewards = _rewards.add(queuedRewards);
 
         if (block.timestamp >= periodFinish) {
             notifyRewardAmount(_rewards);
@@ -179,10 +182,10 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
         }
 
         //et = now - (finish-duration)
-        uint256 elapsedTime = block.timestamp - (periodFinish - duration);
+        uint256 elapsedTime = block.timestamp.sub(periodFinish.sub(duration));
         //current at now: rewardRate * elapsedTime
         uint256 currentAtNow = rewardRate * elapsedTime;
-        uint256 queuedRatio = currentAtNow * 1000 / _rewards;
+        uint256 queuedRatio = currentAtNow.mul(1000).div(_rewards);
         if (queuedRatio < newRewardRatio) {
             notifyRewardAmount(_rewards);
             queuedRewards = 0;
@@ -195,18 +198,18 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     internal
     updateReward(address(0))
     {
-        historicalRewards = historicalRewards + reward;
+        historicalRewards = historicalRewards.add(reward);
         if (block.timestamp >= periodFinish) {
-            rewardRate = reward / duration;
+            rewardRate = reward.div(duration);
         } else {
-            uint256 remaining = periodFinish - block.timestamp;
-            uint256 leftover = remaining * rewardRate;
-            reward = reward + leftover;
-            rewardRate = reward / duration;
+            uint256 remaining = periodFinish.sub(block.timestamp);
+            uint256 leftover = remaining.mul(rewardRate);
+            reward = reward.add(leftover);
+            rewardRate = reward.div(duration);
         }
         currentRewards = reward;
         lastUpdateTime = block.timestamp;
-        periodFinish = block.timestamp + duration;
+        periodFinish = block.timestamp.add(duration);
         emit RewardAdded(reward);
     }
 }

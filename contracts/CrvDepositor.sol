@@ -19,13 +19,13 @@ contract CrvDepositor {
     uint256 public constant FEE_DENOMINATOR = 10000;
 
     address public feeManager;
-    address public immutable voteProxy;
-    address public immutable uveCrv;
+    address public immutable staker;
+    address public immutable minter;
     uint256 public unlockTime;
 
-    constructor(address _voteProxy, address _uveCrv) {
-        voteProxy = _voteProxy;
-        uveCrv = _uveCrv;
+    constructor(address _staker, address _minter) {
+        staker = _staker;
+        minter = _minter;
         feeManager = msg.sender;
     }
 
@@ -37,16 +37,16 @@ contract CrvDepositor {
     function initialLock() external {
         require(msg.sender == feeManager, "!auth");
 
-        uint256 vecrv = IERC20(escrow).balanceOf(voteProxy);
+        uint256 vecrv = IERC20(escrow).balanceOf(staker);
         if (vecrv == 0) {
             uint256 unlockAt = block.timestamp + MAXTIME;
             uint256 unlockInWeeks = (unlockAt / WEEK) * WEEK;
 
             //release old lock if exists
-            IStaker(voteProxy).release();
+            IStaker(staker).release();
             //create new lock
-            uint256 crvBalanceStaker = IERC20(crv).balanceOf(voteProxy);
-            IStaker(voteProxy).createLock(crvBalanceStaker, unlockAt);
+            uint256 crvBalanceStaker = IERC20(crv).balanceOf(staker);
+            IStaker(staker).createLock(crvBalanceStaker, unlockAt);
             unlockTime = unlockInWeeks;
         }
     }
@@ -55,17 +55,17 @@ contract CrvDepositor {
     function _lockCurve() internal {
         uint256 crvBalance = IERC20(crv).balanceOf(address(this));
         if (crvBalance > 0) {
-            IERC20(crv).safeTransfer(voteProxy, crvBalance);
+            IERC20(crv).safeTransfer(staker, crvBalance);
         }
 
         //increase ammount
-        uint256 crvBalanceStaker = IERC20(crv).balanceOf(voteProxy);
+        uint256 crvBalanceStaker = IERC20(crv).balanceOf(staker);
         if (crvBalanceStaker == 0) {
             return;
         }
 
         //increase amount
-        IStaker(voteProxy).increaseAmount(crvBalanceStaker);
+        IStaker(staker).increaseAmount(crvBalanceStaker);
 
 
         uint256 unlockAt = block.timestamp + MAXTIME;
@@ -73,7 +73,7 @@ contract CrvDepositor {
 
         //increase time too if over 2 week buffer
         if (unlockInWeeks - unlockTime > 2) {
-            IStaker(voteProxy).increaseTime(unlockAt);
+            IStaker(staker).increaseTime(unlockAt);
             unlockTime = unlockInWeeks;
         }
     }
@@ -87,14 +87,14 @@ contract CrvDepositor {
         require(_amount > 0, "!>0");
 
         //lock immediately, transfer directly to staker to skip an erc20 transfer
-        IERC20(crv).safeTransferFrom(msg.sender, voteProxy, _amount);
+        IERC20(crv).safeTransferFrom(msg.sender, staker, _amount);
         _lockCurve();
 
         //mint here
-        ITokenMinter(uveCrv).mint(address(this), _amount);
+        ITokenMinter(minter).mint(address(this), _amount);
         //stake for msg.sender
-        IERC20(uveCrv).safeApprove(_stakeAddress, 0);
-        IERC20(uveCrv).safeApprove(_stakeAddress, _amount);
+        IERC20(minter).safeApprove(_stakeAddress, 0);
+        IERC20(minter).safeApprove(_stakeAddress, _amount);
         IRewards(_stakeAddress).stakeFor(msg.sender, _amount);
     }
 
