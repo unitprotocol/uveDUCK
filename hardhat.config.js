@@ -33,7 +33,7 @@ module.exports = {
     }
   },
   mocha: {
-    timeout: 120000
+    timeout: 240_000
   },
   vyper: {
     version: "0.2.15",

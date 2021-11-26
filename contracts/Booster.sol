@@ -36,7 +36,6 @@ contract Booster {
     address public voteDelegate;
     address public treasury;
     address public stakerRewards; // CRV for DUCK
-    address public lockRewards; // CRV for uveCRV
     address public lockFees; // 3CRV for uveCRV, no additional fees applied
     address public feeDistro;
     address public feeToken;
@@ -404,7 +403,7 @@ contract Booster {
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
 
         if (crvBal > 0) {
-            uint256 _stakerIncentive = crvBal.mul(duckStakerIncentive).div(FEE_DENOMINATOR);
+            uint256 _stakerIncentive = stakerRewards == address(0) ? 0 : crvBal.mul(duckStakerIncentive).div(FEE_DENOMINATOR);
             uint256 _callIncentive = crvBal.mul(earmarkIncentive).div(FEE_DENOMINATOR);
 
             //send treasury
@@ -426,7 +425,7 @@ contract Booster {
             IERC20(crv).safeTransfer(rewardContract, crvBal);
             IRewards(rewardContract).queueNewRewards(crvBal);
 
-            if (_stakerIncentive != 0 && stakerRewards != address(0)) {
+            if (_stakerIncentive != 0) {
                 //send DUCK-stakers' share of crv to reward contract
                 IERC20(crv).safeTransfer(stakerRewards, _stakerIncentive);
             }

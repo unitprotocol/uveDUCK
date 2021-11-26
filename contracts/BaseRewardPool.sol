@@ -264,7 +264,6 @@ contract BaseRewardPool {
         if (reward > 0) {
             rewards[_account] = 0;
             rewardToken.safeTransfer(_account, reward);
-            IDeposit(operator).rewardClaimed(pid, _account, reward);
             emit RewardPaid(_account, reward);
         }
 

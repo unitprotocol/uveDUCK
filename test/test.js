@@ -1,16 +1,14 @@
-const { BigNumber } = require("ethers")
 const chai = require("chai")
 const { solidity } = require("ethereum-waffle")
 chai.use(solidity)
 const { ethers } = require('hardhat')
-
-const { expect } = chai
 
 const DAY = 86400
 const WEEK = 7 * DAY
 
 const crvWhale = '0x7a16fF8270133F063aAb6C9977183D9e72835428'
 const usdpLPWhale = '0x1b5eb1173d2bf770e50f10410c9a96f7a8eb6e75'
+const usdpAddress = '0x1456688345527be1f37e9e627da0837d6f08c925'
 const wcd = '0x40907540d8a6c65c637785e8f8b742ae6b0b9968'
 const sww = '0xca719728Ef172d0961768581fdF35CB116e0B7a4'
 const usdpLPAddress = '0x7eb40e450b9655f4b3cc4259bcc731c63ff55ae6'
@@ -19,7 +17,7 @@ const extraRewardStashV3 = '0xd7AbC64CAFc30FDd08A42Ea4bC13846be455399C'
 const unitVault = '0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19'
 
 let crv, admin, alice, bob, charlie, m, walletCheckerDao,
-    smartWalletWhiteList, u, usdpLP, threecrv, dai
+    smartWalletWhiteList, u, usdpLP, threecrv, dai, usdp
 
 let voteProxy, booster, uveCrv, rewardFactory,
     stashFactory, extraRewardStashV2, tokenFactory,
@@ -36,11 +34,12 @@ describe("Functional test", function() {
     dai = await ethers.getContractAt("IERC20", "0x6B175474E89094C44Da98b954EedeAC495271d0F")
     threecrv = await ethers.getContractAt("IERC20", "0x6c3f90f043a72fa612cbac8115ee7e52bde6e490")
     usdpLP = await ethers.getContractAt("IERC20", usdpLPAddress)
+    usdp = await ethers.getContractAt("IERC20", usdpAddress)
     smartWalletWhiteList = await ethers.getContractAt("ISmartWalletWhitelist", sww)
     ;[admin, alice, bob, charlie] = await ethers.getSigners()
 
     oracleRegistry = await ethers.getContractAt("IOracleRegistry", '0x75fBFe26B21fd3EA008af0C764949f8214150C8f')
-    cdpManager = await ethers.getContractAt("ICDPManager01", '0x0e13ab042eC5AB9Fc6F43979406088B9028F66fA')
+    cdpManager = await ethers.getContractAt("ICDPManager01", '0xee84F58Ee39C6122C76C1Fa54f0B6f33da1642Ec')
     wrappedToUnderlyingOracle = await ethers.getContractAt("IWrappedToUnderlyingOracle", '0x220Ea780a484c18fd0Ab252014c58299759a1Fbd')
     unitParameters = await ethers.getContractAt("IParametersBatchUpdater", '0x4DD1A6DB148BEcDADAdFC407D23b725eDd3cfB6f')
 
@@ -105,6 +104,7 @@ describe("Functional test", function() {
 
     // provide collateral and mint some USDP
     await lockFees.connect(m).approve(unitVault, crvDepositAmount)
+    await usdp.connect(m).approve(cdpManager.address, 10n ** 20n)
     await cdpManager.connect(m).join(lockFees.address, crvDepositAmount, 10n ** 21n)
 
     // await booster.setRewardContract(ethers.constants.AddressZero /*veDistribution*/);

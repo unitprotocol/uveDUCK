@@ -70,11 +70,10 @@ contract TokenWrapper is ERC20 {
 contract FeePool is TokenWrapper {
     using SafeERC20 for IERC20;
 
-    IERC20 public rewardToken;
+    IERC20 public immutable rewardToken;
     uint256 public constant duration = 7 days;
 
-    address public operator;
-    address public rewardManager;
+    address public immutable operator;
 
     address public constant unitVault = address(0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19);
 
@@ -86,7 +85,6 @@ contract FeePool is TokenWrapper {
     uint256 public currentRewards = 0;
     uint256 public historicalRewards = 0;
     uint256 public constant newRewardRatio = 830;
-    uint256 private _totalSupply;
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
     mapping(address => uint) public vaultDeposit;
