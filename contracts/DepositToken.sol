@@ -14,7 +14,7 @@ contract DepositToken is ERC20 {
         string(
             abi.encodePacked(ERC20(_lptoken).name()," Unit Protocol Deposit")
         ),
-        string(abi.encodePacked("UP", ERC20(_lptoken).symbol()))
+        string(abi.encodePacked("up", ERC20(_lptoken).symbol()))
     )
     {
         operator =  _operator;
