@@ -2,6 +2,7 @@ const chai = require("chai")
 const { solidity } = require("ethereum-waffle")
 chai.use(solidity)
 const { ethers } = require('hardhat')
+const {deploy} = require("../scripts/deployFns");
 
 const DAY = 86400
 const WEEK = 7 * DAY
@@ -54,38 +55,35 @@ describe("Functional test", function() {
     await ethers.provider.send("hardhat_setBalance", ["0xae37E8f9a3f960eE090706Fa4db41Ca2f2C56Cb8", '0x3635c9adc5dea00000' /* 1000Ether */]);
 
     await ethers.provider.send("hardhat_impersonateAccount", [wcd]);
-    walletCheckerDao = await ethers.getSigner(wcd)
+    walletCheckerDao = await ethers.getSigner(wcd);
 
-    voteProxy = await (await ethers.getContractFactory("CurveVoterProxy")).deploy()
-    booster = await (await ethers.getContractFactory("Booster")).deploy(voteProxy.address)
-    uveCrv = await (await ethers.getContractFactory("UVECRV")).deploy()
-    rewardFactory = await (await ethers.getContractFactory("RewardFactory")).deploy(booster.address, uveCrv.address)
-    stashFactory = await (await ethers.getContractFactory("StashFactoryV2")).deploy(booster.address, rewardFactory.address)
-    extraRewardStashV2 = await (await ethers.getContractFactory("ExtraRewardStashV2")).deploy()
-    tokenFactory = await (await ethers.getContractFactory("TokenFactory")).deploy(booster.address)
-    crvDepositor = await (await ethers.getContractFactory("CrvDepositor")).deploy(voteProxy.address, uveCrv.address)
+    (
+      {
+        voteProxy,
+        booster,
+        uveCrv,
+        rewardFactory,
+        stashFactory,
+        extraRewardStashV2,
+        tokenFactory,
+        crvDepositor
+      } = await deploy()
+    );
 
-    // initial settings
-    await stashFactory.setImplementation(ethers.constants.AddressZero, extraRewardStashV2.address, extraRewardStashV3)
-    await uveCrv.setOperator(crvDepositor.address)
-    await booster.setFactories(rewardFactory.address, stashFactory.address, tokenFactory.address)
-    await booster.setFeeInfo()
     lockFees = await ethers.getContractAt("FeePool", await booster.lockFees())
-
   })
 
   it("CRV -> UVECRV", async function() {
 
-    await crv.connect(m).transfer(voteProxy.address, 1)
-
-    await voteProxy.setOperator(booster.address)
-    await voteProxy.setDepositor(crvDepositor.address)
+    await crv.connect(m).transfer(voteProxy.address, 1) // transfers on voteproxy some crv for initial lock
 
     await smartWalletWhiteList.connect(walletCheckerDao).approveWallet(voteProxy.address)
 
     await crvDepositor.initialLock()
     await crv.connect(m).approve(crvDepositor.address, crvDepositAmount)
-    await crvDepositor.connect(m)['deposit(uint256,address)'](crvDepositAmount, lockFees.address)
+
+    const depositResult1 = await crvDepositor.connect(m)['deposit(uint256,address)'](crvDepositAmount, lockFees.address)
+    console.log('Deposit gas used', (await depositResult1.wait()).gasUsed.toString())
   })
 
   it("voting", async function() {
@@ -161,6 +159,7 @@ describe("Functional test", function() {
 
     const burnerBalance2 = await threecrv.balanceOf("0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc")
     console.log("3crv on burner:", BigInt(burnerBalance2))
+    /// ----- end of burn fees to vecrv claim contracts (curve dao side) ----
 
     console.log('currentRewards', BigInt(await lockFees.currentRewards()))
     await booster.earmarkFees()
@@ -188,7 +187,6 @@ describe("Functional test", function() {
     const depositAmount = 10n ** 21n
 
     // stake usdpCRV
-    await booster.addPool(usdpLP.address, usdpGauge, 2)
     await usdpLP.connect(u).approve(booster.address, depositAmount)
     await booster.connect(u).deposit(0, depositAmount, true)
     console.log('usdpCRV deposited & staked')
