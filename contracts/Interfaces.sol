@@ -11,6 +11,9 @@ interface ICurveGauge {
     function reward_tokens(uint256) external view returns(address);//v2
     function rewarded_token() external view returns(address);//v1
     function lp_token() external view returns(address);
+
+    function add_reward(address _reward_token, address _distributor) external; // v3
+    function deposit_reward_token(address _reward_token, uint256 _amount) external; // v3
 }
 
 interface ICurveVoteEscrow {
