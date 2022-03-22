@@ -9,7 +9,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
 
-contract CurveVoterProxy is Addresses {
+contract VoterProxy is Addresses {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
     using Address for address;

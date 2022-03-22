@@ -5,7 +5,7 @@ const multisig = '0xae37E8f9a3f960eE090706Fa4db41Ca2f2C56Cb8';
 
 async function deploy() {
 
-    const voteProxy = await (await ethers.getContractFactory("CurveVoterProxy")).deploy()
+    const voteProxy = await (await ethers.getContractFactory("VoterProxy")).deploy()
     await voteProxy.deployed();
     const uveDuck = await (await ethers.getContractFactory("UVEDUCK")).deploy()
     await uveDuck.deployed();
@@ -33,7 +33,7 @@ async function deploy() {
     // await allowList.connect(unitMultisig).approveWallet(voteProxy.address);
 
     // booster - owner and feemanager to multisig
-    // CurveVoterProxy - owner to multisig
+    // VoterProxy - owner to multisig
     // Duck depositor - feeManager to multisig
     // SmartWalletAllowList - dao to multisig
 
