@@ -2,17 +2,17 @@
 pragma solidity 0.8.9;
 
 import './Interfaces.sol';
+import "./Addresses.sol";
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 
-contract CrvDepositor {
+contract DuckDepositor is Addresses {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    address public constant escrow = address(0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2);
+    address public constant escrow = veDuck;
     uint256 private constant MAXTIME = 4 * 364 * 86400;
     uint256 private constant WEEK = 7 * 86400;
 
@@ -37,35 +37,35 @@ contract CrvDepositor {
     function initialLock() external {
         require(msg.sender == feeManager, "!auth");
 
-        uint256 vecrv = IERC20(escrow).balanceOf(staker);
-        if (vecrv == 0) {
+        uint256 veduck = IERC20(escrow).balanceOf(staker);
+        if (veduck == 0) {
             uint256 unlockAt = block.timestamp + MAXTIME;
             uint256 unlockInWeeks = (unlockAt / WEEK) * WEEK;
 
             //release old lock if exists
             IStaker(staker).release();
             //create new lock
-            uint256 crvBalanceStaker = IERC20(crv).balanceOf(staker);
-            IStaker(staker).createLock(crvBalanceStaker, unlockAt);
+            uint256 duckBalanceStaker = IERC20(duck).balanceOf(staker);
+            IStaker(staker).createLock(duckBalanceStaker, unlockAt);
             unlockTime = unlockInWeeks;
         }
     }
 
     //lock curve
     function _lockCurve() internal {
-        uint256 crvBalance = IERC20(crv).balanceOf(address(this));
-        if (crvBalance > 0) {
-            IERC20(crv).safeTransfer(staker, crvBalance);
+        uint256 duckBalance = IERC20(duck).balanceOf(address(this));
+        if (duckBalance > 0) {
+            IERC20(duck).safeTransfer(staker, duckBalance);
         }
 
         //increase ammount
-        uint256 crvBalanceStaker = IERC20(crv).balanceOf(staker);
-        if (crvBalanceStaker == 0) {
+        uint256 duckBalanceStaker = IERC20(duck).balanceOf(staker);
+        if (duckBalanceStaker == 0) {
             return;
         }
 
         //increase amount
-        IStaker(staker).increaseAmount(crvBalanceStaker);
+        IStaker(staker).increaseAmount(duckBalanceStaker);
 
 
         uint256 unlockAt = block.timestamp + MAXTIME;
@@ -82,12 +82,12 @@ contract CrvDepositor {
         _lockCurve();
     }
 
-    //deposit crv for cvxCrv
+    //deposit duck for uveDuck and stake to _stakeAddress (suveDuck)
     function deposit(uint256 _amount, address _stakeAddress) public {
         require(_amount > 0, "!>0");
 
         //lock immediately, transfer directly to staker to skip an erc20 transfer
-        IERC20(crv).safeTransferFrom(msg.sender, staker, _amount);
+        IERC20(duck).safeTransferFrom(msg.sender, staker, _amount);
         _lockCurve();
 
         //mint here
@@ -99,7 +99,7 @@ contract CrvDepositor {
     }
 
     function depositAll(address _stakeAddress) external {
-        uint256 crvBal = IERC20(crv).balanceOf(msg.sender);
-        deposit(crvBal, _stakeAddress);
+        uint256 duckBal = IERC20(duck).balanceOf(msg.sender);
+        deposit(duckBal, _stakeAddress);
     }
 }

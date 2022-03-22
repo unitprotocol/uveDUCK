@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "./Interfaces.sol";
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 
 
-contract DepositToken is ERC20 {
+contract UVEDUCK is ERC20 {
 
     address public operator;
 
-    constructor(address _operator, address _lptoken)
+    constructor()
     ERC20(
-        string(
-            abi.encodePacked(ERC20(_lptoken).name()," Unit Protocol Deposit")
-        ),
-        string(abi.encodePacked("up", ERC20(_lptoken).symbol()))
+        "Unit vote-escrowed DUCK",
+        "uveDUCK"
     )
     {
-        operator =  _operator;
+        operator = msg.sender;
+    }
+
+    function setOperator(address _operator) external {
+        require(msg.sender == operator, "!auth");
+        operator = _operator;
     }
 
     function mint(address _to, uint256 _amount) external {
@@ -31,4 +33,5 @@ contract DepositToken is ERC20 {
 
         _burn(_from, _amount);
     }
+
 }
