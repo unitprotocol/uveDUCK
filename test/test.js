@@ -71,6 +71,7 @@ describe("Functional test", function () {
         await booster.setTreasury(treasuryAddress);
 
         suveDuck = await ethers.getContractAt("FeePool", await booster.lockFees())
+        console.log('suveDuck: ', suveDuck.address);
     })
 
     it("DUCK -> UVEDUCK", async function () {
