@@ -51,7 +51,7 @@ contract TokenWrapper is ERC20 {
 
     IERC20 public immutable stakingToken;
 
-    constructor(address _stakingToken) ERC20 ("Staked uveCRV", "suveCRV") {
+    constructor(address _stakingToken) ERC20 ("Staked uveDUCK", "suveDUCK") {
         stakingToken = IERC20(_stakingToken);
     }
 

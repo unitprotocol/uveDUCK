@@ -27,4 +27,10 @@ interface ICDPManager01 {
 
 interface IWrappedToUnderlyingOracle {
     function setUnderlying(address wrapped, address underlying) external;
+    function assetToUsd(address asset, uint amount) external view returns (uint);
+}
+
+interface IVeDistribution {
+    function checkpoint_token() external;
+    function checkpoint_total_supply() external;
 }
